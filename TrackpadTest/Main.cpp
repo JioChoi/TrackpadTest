@@ -5,8 +5,18 @@
 #include <SDL.h>
 #include <SDL_syswm.h>
 
+struct touchData {
+	BYTE whatever;
+	BYTE x;
+	BYTE xm;
+	BYTE y;
+	BYTE ym;
+};
+
 int main(int argc, char* argv[]) {
-	SDL_Window* window = SDL_CreateWindow("Gesture", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 600, 600, NULL);
+	SDL_Window* window = SDL_CreateWindow("Gesture", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1920, 1080, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_BORDERLESS);
+	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+	
 	SDL_EventState(SDL_SYSWMEVENT, SDL_ENABLE);
 	SDL_SysWMinfo wmInfo;
 	SDL_VERSION(&wmInfo.version);
@@ -27,14 +37,17 @@ int main(int argc, char* argv[]) {
 	RegisterRawInputDevices(raw_input_device, 1, sizeof(raw_input_device[0]));
 
 	SDL_Event event;
-
+	POINT prv = { 0, 0 };
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	SDL_RenderClear(renderer);
 	while (true) {
+		
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_SYSWMEVENT) {
 				if (event.syswm.msg->msg.win.msg == WM_INPUT) {
 					UINT data_size = 0;
 					GetRawInputData((HRAWINPUT)event.syswm.msg->msg.win.lParam, RID_INPUT, NULL, &data_size, sizeof(RAWINPUTHEADER));
-					if (data_size < 0) {
+					if (data_size <= 0) {
 						continue;
 					}
 					std::vector<BYTE> data;
@@ -44,11 +57,40 @@ int main(int argc, char* argv[]) {
 					RAWINPUT* raw = (RAWINPUT*)(&data[0]);
 
 					if (raw->header.dwType == RIM_TYPEHID) {
-						std::cout << "SDF\n";
+						//system("cls");
+						int touchNum = 0;
+						POINT point = { 0,0 };
+
+						for (int group = 0; group < 5; group++) {
+							touchData* td = (touchData*)&raw->data.hid.bRawData[group * 5 + 1];
+							if (td->whatever != 0) {
+								touchNum++;
+							}
+							point.x += (int)td->x + (td->xm * 255);
+							point.y += (int)td->y + (td->ym * 255);
+						}
+						if (touchNum == 0) {
+							break;
+						}
+						else if (touchNum == 1) {
+							SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+							SDL_RenderClear(renderer);
+							break;
+						}
+						std::cout << point.x / touchNum << std::endl;
+						std::cout << point.y / touchNum << std::endl;
+						std::cout << touchNum << std::endl;
+
+						SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+						SDL_RenderDrawLine(renderer, point.x / touchNum, point.y / touchNum, prv.x, prv.y);
+						prv.x = (int)(point.x / touchNum);
+						prv.y = (int)(point.y / touchNum);
 					}
 				}
 			}
 		}
+
+		SDL_RenderPresent(renderer);
 	}
 
 	return 0;
