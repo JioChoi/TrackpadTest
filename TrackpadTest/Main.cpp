@@ -6,6 +6,11 @@
 #include <SDL_syswm.h>
 
 int main(int argc, char* argv[]) {
+	int value = GetSystemMetrics(SM_DIGITIZER);
+	if (value & NID_MULTI_INPUT) {
+		std::cout << "SDFDSF\n";
+	}
+
 	SDL_Window* window = SDL_CreateWindow("Gesture", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 600, 600, NULL);
 	SDL_EventState(SDL_SYSWMEVENT, SDL_ENABLE);
 	SDL_SysWMinfo wmInfo;
@@ -33,17 +38,28 @@ int main(int argc, char* argv[]) {
 			if (event.type == SDL_SYSWMEVENT) {
 				if (event.syswm.msg->msg.win.msg == WM_INPUT) {
 					std::cout << "SDF\n";
-					/*UINT dwSize = 0;
-					GetRawInputData((HRAWINPUT)event.syswm.msg->msg.win.lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
-					if (dwSize > 0) {
-						LPBYTE lpb = new BYTE[dwSize];
-						GetRawInputData((HRAWINPUT)event.syswm.msg->msg.win.lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
-						RAWINPUT* raw = (RAWINPUT*)lpb;
-						if (raw->header.dwType == RIM_TYPEMOUSE) {
-							std::cout << raw->data.mouse.ulExtraInformation << std::endl;
+					UINT data_size = 0;
+					GetRawInputData((HRAWINPUT)event.syswm.msg->msg.win.lParam, RID_INPUT, NULL, &data_size, sizeof(RAWINPUTHEADER));
+					std::vector<BYTE> data;
+					data.resize(data_size);
+					// and then read the input data in
+					GetRawInputData((HRAWINPUT)event.syswm.msg->msg.win.lParam, RID_INPUT, &data[0], &data_size, sizeof(RAWINPUTHEADER));
+					RAWINPUT* raw = (RAWINPUT*)(&data[0]);
+
+					if (raw->header.dwType == RIM_TYPEHID)
+					{
+						// for each packet received..
+						for (DWORD index(0); index < raw->data.hid.dwCount; ++index)
+						{
+							// reinterpret the data as our nicely formatted digitizer-specific structure
+							//DigitizerData* result((DigitizerData*)&raw->data.hid.bRawData[raw->data.hid.dwSizeHid * index]);
+							// for each touch registered...
+							//for (BYTE touch_index(0); touch_index < result->active_touch_count; ++touch_index)
+							{
+								// insert touch handler code here
+							}
 						}
-					}*/
-					
+					}
 				}
 			}
 		}
