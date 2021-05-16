@@ -1,5 +1,6 @@
 #include <iostream>
 #include <Windows.h>
+#include <vector>
 
 #include <SDL.h>
 #include <SDL_syswm.h>
@@ -12,13 +13,19 @@ int main(int argc, char* argv[]) {
 	SDL_GetWindowWMInfo(window, &wmInfo);
 	HWND hwnd = wmInfo.info.win.window;
 	
-	RAWINPUTDEVICE rawInputDevice;
-	rawInputDevice.usUsagePage = 0x01;
-	rawInputDevice.usUsage = 0x30;
-	rawInputDevice.dwFlags = RIDEV_NOLEGACY;
-	rawInputDevice.hwndTarget = hwnd;
+	RAWINPUTDEVICE raw_input_device[1];
+	// Starting with Windows 7, multitouch digitizers appear as HID touch digitizers (page 0x0D, usage 0x04), 
+	// but they also contain the contact ID usage in their report descriptor (page 0x0D, usage 0x51).
+	raw_input_device[0].usUsagePage = 0x0D;
+	// RIDEV_PAGEONLY specifies all devices whose top level collection is from the specified usUsagePage.
+	// Note that usUsage must be zero.
+	raw_input_device[0].dwFlags = RIDEV_INPUTSINK | RIDEV_PAGEONLY;
+	raw_input_device[0].usUsage = 0x00;
+	// route the RAWINPUT messages to our window; this is required for the RIDEV_INPUTSINK option
+	raw_input_device[0].hwndTarget = hwnd;
+	// listen to digitizer events
+	RegisterRawInputDevices(raw_input_device, 1, sizeof(raw_input_device[0]));
 
-	RegisterRawInputDevices(&rawInputDevice, 1, sizeof(RAWINPUTDEVICE));
 	SDL_Event event;
 
 	while (true) {
